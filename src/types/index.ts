@@ -1,0 +1,6 @@
+export * from './spot.types'
+export * from './customer.types'
+export * from './reservation.types'
+export * from './auth.types'
+export * from './dashboard.types'
+export * from './fiscal.types'

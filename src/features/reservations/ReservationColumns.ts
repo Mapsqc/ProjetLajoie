@@ -28,7 +28,7 @@ export function createReservationColumns(
       header: 'Emplacement',
       cell: ({ row }) => {
         const spot = spots.find((s) => s.id === row.original.spotId)
-        return spot?.name ?? row.original.spotId
+        return spot ? `#${spot.number}` : row.original.spotId
       },
     },
     {

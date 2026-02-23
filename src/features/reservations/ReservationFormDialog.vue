@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ReservationFormSchema } from '@/types'
+import { ReservationFormSchema, SERVICE_LABELS, VEHICLE_TYPE_LABELS, GROUND_LABELS } from '@/types'
+import type { SpotService, VehicleType, GroundType } from '@/types'
 import { useSpotsStore } from '@/stores/spots.store'
 import { useReservationsStore } from '@/stores/reservations.store'
 import { customersService } from '@/services/customers.service'
 import { dayjs } from '@/utils/date'
 import { formatCurrency } from '@/utils/format'
 import { computeTotalWithTax } from '@/utils/pricing'
+import { RANGED_VEHICLE_TYPES } from '@/utils/spot-filters'
 import type { Customer } from '@/types'
 import {
   Dialog,
@@ -39,12 +41,6 @@ const customers = ref<Customer[]>([])
 const isNewCustomer = ref(false)
 const newCustomer = ref({ firstName: '', lastName: '', email: '', phone: '' })
 
-// Spot filters
-const filterElectricity = ref(false)
-const filterWater = ref(false)
-const filterSewer = ref(false)
-const filterMinSize = ref('1')
-
 // Form data
 const form = ref({
   spotId: '',
@@ -55,42 +51,41 @@ const form = ref({
   childrenCount: 0,
 })
 
-const typeLabels: Record<string, string> = {
-  TENT: 'Tente',
-  RV: 'VR',
-  CABIN: 'Chalet',
-}
-
 const today = computed(() => dayjs().format('YYYY-MM-DD'))
 
 const datesValid = computed(() => {
   return form.value.checkIn !== '' && form.value.checkOut !== '' && form.value.checkIn < form.value.checkOut
 })
 
-const noSpotsAvailable = computed(() => {
-  return datesValid.value && filteredSpots.value.length === 0
+// Whether the vehicle length input should be shown
+const showLengthInput = computed(() => {
+  return (
+    spotsStore.selectedVehicleType !== '' &&
+    RANGED_VEHICLE_TYPES.includes(spotsStore.selectedVehicleType as VehicleType)
+  )
 })
 
-const filteredSpots = computed(() => {
-  return spotsStore.spots.filter((s) => {
-    if (!s.isActive) return false
-    if (filterElectricity.value && !s.hasElectricity) return false
-    if (filterWater.value && !s.hasWater) return false
-    if (filterSewer.value && !s.hasSewer) return false
-    if (s.size < Number(filterMinSize.value)) return false
+// Spots after cascade filtering + overlap exclusion
+const availableSpots = computed(() => {
+  let spots = spotsStore.filteredSpots
 
-    // Exclude spots with overlapping active reservations
-    if (datesValid.value) {
+  // Exclude spots with overlapping active reservations
+  if (datesValid.value) {
+    spots = spots.filter((s) => {
       const hasOverlap = reservationsStore.reservations.some((r) => {
         if (r.spotId !== s.id) return false
-        if (r.status === 'CANCELLED' || r.status === 'EXPIRED' || r.status === 'NO_SHOW') return false
+        if (r.status === 'HOLD' || r.status === 'CANCELLED' || r.status === 'EXPIRED' || r.status === 'NO_SHOW') return false
         return r.checkIn < form.value.checkOut && r.checkOut > form.value.checkIn
       })
-      if (hasOverlap) return false
-    }
+      return !hasOverlap
+    })
+  }
 
-    return true
-  })
+  return spots
+})
+
+const noSpotsAvailable = computed(() => {
+  return datesValid.value && availableSpots.value.length === 0
 })
 
 const selectedSpot = computed(() => {
@@ -105,7 +100,7 @@ const nights = computed(() => {
 
 const totalPrice = computed(() => {
   if (!selectedSpot.value || nights.value <= 0) return 0
-  return computeTotalWithTax(selectedSpot.value.pricePerNight, nights.value)
+  return computeTotalWithTax(selectedSpot.value.pricePerNight, nights.value, safeAdultsCount.value)
 })
 
 // Sanitize numeric fields to avoid NaN
@@ -134,16 +129,34 @@ const canSubmit = computed(() => {
   return true
 })
 
-// Reset spot selection when filters change and current selection no longer matches
-watch([filterElectricity, filterWater, filterSewer, filterMinSize], () => {
-  if (form.value.spotId && !filteredSpots.value.find((s) => s.id === form.value.spotId)) {
-    form.value.spotId = ''
-  }
+// --- Watchers for cascade resets ---
+
+// When service changes, reset downstream filters + spot selection
+watch(() => spotsStore.selectedService, () => {
+  spotsStore.resetCascadingFilters('service')
+  form.value.spotId = ''
+})
+
+// When vehicle type changes, reset downstream filters + spot selection
+watch(() => spotsStore.selectedVehicleType, () => {
+  spotsStore.resetCascadingFilters('vehicle')
+  form.value.spotId = ''
+})
+
+// When vehicle length changes, reset spot selection
+watch(() => spotsStore.selectedVehicleLength, () => {
+  spotsStore.resetCascadingFilters('length')
+  form.value.spotId = ''
+})
+
+// When ground changes, reset spot selection
+watch(() => spotsStore.selectedGround, () => {
+  form.value.spotId = ''
 })
 
 // Reset spot selection when dates change (spot may no longer be available)
 watch([() => form.value.checkIn, () => form.value.checkOut], () => {
-  if (form.value.spotId && !filteredSpots.value.find((s) => s.id === form.value.spotId)) {
+  if (form.value.spotId && !availableSpots.value.find((s) => s.id === form.value.spotId)) {
     form.value.spotId = ''
   }
 })
@@ -158,10 +171,7 @@ watch(() => form.value.checkIn, (newCheckIn) => {
 watch(() => props.open, async (open) => {
   if (open) {
     form.value = { spotId: '', customerId: '', checkIn: '', checkOut: '', adultsCount: 1, childrenCount: 0 }
-    filterElectricity.value = false
-    filterWater.value = false
-    filterSewer.value = false
-    filterMinSize.value = '1'
+    spotsStore.resetAllCascadeFilters()
     isNewCustomer.value = false
     newCustomer.value = { firstName: '', lastName: '', email: '', phone: '' }
     errors.value = {}
@@ -175,6 +185,26 @@ watch(() => props.open, async (open) => {
     customers.value = await customersService.getAll()
   }
 })
+
+function handleServiceChange(val: unknown) {
+  const strVal = typeof val === 'string' ? val : String(val ?? '')
+  spotsStore.selectedService = (strVal === 'NONE' ? '' : strVal) as SpotService | ''
+}
+
+function handleVehicleTypeChange(val: unknown) {
+  const strVal = typeof val === 'string' ? val : String(val ?? '')
+  spotsStore.selectedVehicleType = (strVal === 'NONE' ? '' : strVal) as VehicleType | ''
+}
+
+function handleGroundChange(val: unknown) {
+  const strVal = typeof val === 'string' ? val : String(val ?? '')
+  spotsStore.selectedGround = (strVal === 'NONE' ? '' : strVal) as GroundType | ''
+}
+
+function handleLengthInput(event: Event) {
+  const val = (event.target as HTMLInputElement).value
+  spotsStore.selectedVehicleLength = val === '' ? null : Number(val)
+}
 
 function validate(): boolean {
   errors.value = {}
@@ -240,9 +270,7 @@ async function handleSubmit() {
     try {
       const created = await customersService.create(newCustomer.value)
       customerId = created.id
-      // Ajouter le client créé à la liste pour mise à jour immédiate
       customers.value = [created, ...customers.value]
-      // Basculer vers la sélection de client existant et sélectionner le nouveau client
       isNewCustomer.value = false
       form.value.customerId = customerId
     } catch (err) {
@@ -322,31 +350,86 @@ async function handleSubmit() {
           </div>
         </div>
 
-        <!-- 2. Spot filters (visible only when dates are valid) -->
+        <!-- 2. Cascade filters (visible only when dates are valid) -->
         <template v-if="datesValid">
-          <div class="space-y-2">
+          <div class="space-y-3">
             <Label class="text-sm font-medium">Filtres emplacement</Label>
-            <div class="flex flex-wrap gap-4">
-              <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" v-model="filterElectricity" class="rounded" />
-                Electricite
-              </label>
-              <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" v-model="filterWater" class="rounded" />
-                Eau
-              </label>
-              <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" v-model="filterSewer" class="rounded" />
-                Egout
-              </label>
-              <div class="flex items-center gap-2 text-sm">
-                <Label for="filterMinSize" class="whitespace-nowrap">Taille min.</Label>
-                <Select v-model="filterMinSize">
-                  <SelectTrigger class="w-20 h-8">
-                    <SelectValue />
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <!-- Service filter -->
+              <div class="space-y-1">
+                <Label class="text-xs text-muted-foreground">Service</Label>
+                <Select :model-value="spotsStore.selectedService || 'NONE'" @update:model-value="handleServiceChange">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tous les services" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem v-for="n in 10" :key="n" :value="String(n)">{{ n }}</SelectItem>
+                    <SelectItem value="NONE">Tous les services</SelectItem>
+                    <SelectItem
+                      v-for="svc in spotsStore.availableServices"
+                      :key="svc"
+                      :value="svc"
+                    >
+                      {{ SERVICE_LABELS[svc] }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <!-- Vehicle type filter -->
+              <div class="space-y-1">
+                <Label class="text-xs text-muted-foreground">Type de véhicule</Label>
+                <Select
+                  :model-value="spotsStore.selectedVehicleType || 'NONE'"
+                  :disabled="!spotsStore.selectedService"
+                  @update:model-value="handleVehicleTypeChange"
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tous les véhicules" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">Tous les véhicules</SelectItem>
+                    <SelectItem
+                      v-for="vt in spotsStore.availableVehicleTypes"
+                      :key="vt"
+                      :value="vt"
+                    >
+                      {{ VEHICLE_TYPE_LABELS[vt] }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <!-- Vehicle length (only for ranged types) -->
+              <div v-if="showLengthInput" class="space-y-1">
+                <Label class="text-xs text-muted-foreground">Longueur du véhicule (pi)</Label>
+                <Input
+                  type="number"
+                  :model-value="spotsStore.selectedVehicleLength ?? ''"
+                  @input="handleLengthInput"
+                  min="1"
+                  placeholder="Ex: 30"
+                />
+              </div>
+
+              <!-- Ground type filter -->
+              <div class="space-y-1">
+                <Label class="text-xs text-muted-foreground">Type de sol</Label>
+                <Select :model-value="spotsStore.selectedGround || 'NONE'" @update:model-value="handleGroundChange">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tous les sols" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">Tous les sols</SelectItem>
+                    <SelectItem
+                      v-for="gt in spotsStore.availableGroundTypes"
+                      :key="gt"
+                      :value="gt"
+                    >
+                      {{ GROUND_LABELS[gt] }}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -361,8 +444,8 @@ async function handleSubmit() {
                 <SelectValue :placeholder="noSpotsAvailable ? 'Aucun terrain disponible' : 'Choisir un emplacement'" />
               </SelectTrigger>
               <SelectContent v-if="!noSpotsAvailable">
-                <SelectItem v-for="spot in filteredSpots" :key="spot.id" :value="spot.id">
-                  {{ spot.name }} — {{ typeLabels[spot.type] }} — {{ formatCurrency(spot.pricePerNight) }}/nuit
+                <SelectItem v-for="spot in availableSpots" :key="spot.id" :value="spot.id">
+                  #{{ spot.number }} — {{ SERVICE_LABELS[spot.service] }} — {{ formatCurrency(spot.pricePerNight) }}/nuit
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -442,7 +525,7 @@ async function handleSubmit() {
         </div>
 
         <!-- 7. Status info + buttons -->
-        <p class="text-xs text-muted-foreground">Statut initial : En attente (HOLD)</p>
+        <p class="text-xs text-muted-foreground">Statut initial : Confirmée</p>
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="emit('update:open', false)">

@@ -1,32 +1,80 @@
 import type { ColumnDef } from '@tanstack/vue-table'
 import type { Spot } from '@/types'
+import { SERVICE_LABELS, STATUS_LABELS } from '@/types'
 import { h } from 'vue'
 import { formatCurrency } from '@/utils/format'
 import SpotRowActions from '@/features/spots/SpotRowActions.vue'
 import { Badge } from '@/components/ui/badge'
-import { Zap, Droplets } from 'lucide-vue-next'
+import { spotAcceptsVehicleType } from '@/utils/spot-filters'
+import type { VehicleType } from '@/types'
 
-const typeLabels: Record<string, string> = {
-  TENT: 'Tente',
-  RV: 'VR',
-  CABIN: 'Chalet',
+const vehicleAbbreviations: Record<VehicleType, string> = {
+  MOTORISE: 'Mot',
+  FIFTHWHEEL: 'FW',
+  ROULOTTE: 'Rou',
+  CAMPEUR_PORTE: 'CP',
+  TENTE_ROULOTTE: 'TR',
+  TENTE: 'T',
+}
+
+const allVehicleTypes: VehicleType[] = [
+  'MOTORISE',
+  'FIFTHWHEEL',
+  'ROULOTTE',
+  'CAMPEUR_PORTE',
+  'TENTE_ROULOTTE',
+  'TENTE',
+]
+
+const statusVariant: Record<string, string> = {
+  REGULAR: 'text-emerald-600',
+  SEASONAL: 'text-blue-600',
+  BACKUP: 'text-orange-500',
+  GROUP: 'text-purple-600',
 }
 
 export const spotColumns: ColumnDef<Spot>[] = [
   {
-    accessorKey: 'name',
-    header: 'Nom',
-    cell: ({ row }) => h('span', { class: 'font-medium' }, row.getValue('name')),
+    accessorKey: 'number',
+    header: '#',
+    cell: ({ row }) => h('span', { class: 'font-medium' }, `#${row.getValue('number')}`),
   },
   {
-    accessorKey: 'type',
-    header: 'Type',
-    cell: ({ row }) => h(Badge, { variant: 'outline' }, () => typeLabels[row.getValue('type') as string] || row.getValue('type')),
+    accessorKey: 'service',
+    header: 'Service',
+    cell: ({ row }) =>
+      h(Badge, { variant: 'outline' }, () => SERVICE_LABELS[row.getValue('service') as Spot['service']] || row.getValue('service')),
   },
   {
-    accessorKey: 'capacity',
-    header: 'Capacite',
-    cell: ({ row }) => `${row.getValue('capacity')} pers.`,
+    accessorKey: 'status',
+    header: 'Catégorie',
+    cell: ({ row }) => {
+      const status = row.getValue('status') as Spot['status']
+      const cls = statusVariant[status] || ''
+      return h('span', { class: `text-sm font-medium ${cls}` }, STATUS_LABELS[status] || status)
+    },
+  },
+  {
+    id: 'dimensions',
+    header: 'Dimensions (pi)',
+    cell: ({ row }) => {
+      const l = row.original.longueur
+      const w = row.original.largeur
+      if (l && w) return `${l} x ${w}`
+      if (l) return `${l} pi`
+      return '—'
+    },
+  },
+  {
+    id: 'vehicles',
+    header: 'Véhicules',
+    cell: ({ row }) => {
+      const abbrs = allVehicleTypes
+        .filter((vt) => spotAcceptsVehicleType(row.original, vt))
+        .map((vt) => vehicleAbbreviations[vt])
+      if (abbrs.length === 0) return h('span', { class: 'text-muted-foreground text-xs' }, '—')
+      return h('span', { class: 'text-xs' }, abbrs.join(', '))
+    },
   },
   {
     accessorKey: 'pricePerNight',
@@ -34,18 +82,8 @@ export const spotColumns: ColumnDef<Spot>[] = [
     cell: ({ row }) => formatCurrency(row.getValue('pricePerNight')),
   },
   {
-    id: 'services',
-    header: 'Services',
-    cell: ({ row }) => {
-      const icons = []
-      if (row.original.hasElectricity) icons.push(h(Zap, { class: 'h-4 w-4 text-yellow-500' }))
-      if (row.original.hasWater) icons.push(h(Droplets, { class: 'h-4 w-4 text-blue-500' }))
-      return h('div', { class: 'flex gap-1' }, icons.length ? icons : [h('span', { class: 'text-muted-foreground text-xs' }, '—')])
-    },
-  },
-  {
     accessorKey: 'isActive',
-    header: 'Statut',
+    header: 'Actif',
     cell: ({ row }) =>
       h(
         'span',

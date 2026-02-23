@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useSpotsStore } from '@/stores/spots.store'
-import type { SpotType } from '@/types'
+import { SERVICE_LABELS } from '@/types'
+import type { SpotService } from '@/types'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import SpotsDataTable from '@/features/spots/SpotsDataTable.vue'
@@ -18,21 +19,23 @@ onMounted(() => {
   spotsStore.fetchSpots()
 })
 
-watch([() => spotsStore.searchQuery, () => spotsStore.typeFilter], () => {
+watch([() => spotsStore.searchQuery, () => spotsStore.serviceFilter], () => {
   spotsStore.fetchSpots()
 }, { debounce: 300 } as any)
 
-function handleTypeChange(val: unknown) {
+function handleServiceChange(val: unknown) {
   const strVal = typeof val === 'string' ? val : String(val ?? '')
   const value = strVal === 'ALL' ? '' : strVal
-  spotsStore.typeFilter = value as SpotType | ''
+  spotsStore.serviceFilter = value as SpotService | ''
   spotsStore.fetchSpots()
 }
+
+const serviceOptions = Object.entries(SERVICE_LABELS) as [SpotService, string][]
 </script>
 
 <template>
   <div class="space-y-6">
-    <PageHeader title="Emplacements" description="Gerez les emplacements du camping">
+    <PageHeader title="Emplacements" description="Gérez les emplacements du camping">
       <template #actions>
         <Button @click="showCreateDialog = true">
           <Plus class="mr-2 h-4 w-4" />
@@ -52,15 +55,15 @@ function handleTypeChange(val: unknown) {
           @input="spotsStore.fetchSpots()"
         />
       </div>
-      <Select :model-value="spotsStore.typeFilter || 'ALL'" @update:model-value="handleTypeChange">
-        <SelectTrigger class="w-44">
-          <SelectValue placeholder="Type" />
+      <Select :model-value="spotsStore.serviceFilter || 'ALL'" @update:model-value="handleServiceChange">
+        <SelectTrigger class="w-52">
+          <SelectValue placeholder="Service" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="ALL">Tous les types</SelectItem>
-          <SelectItem value="TENT">Tente</SelectItem>
-          <SelectItem value="RV">VR</SelectItem>
-          <SelectItem value="CABIN">Chalet</SelectItem>
+          <SelectItem value="ALL">Tous les services</SelectItem>
+          <SelectItem v-for="[val, label] in serviceOptions" :key="val" :value="val">
+            {{ label }}
+          </SelectItem>
         </SelectContent>
       </Select>
     </div>

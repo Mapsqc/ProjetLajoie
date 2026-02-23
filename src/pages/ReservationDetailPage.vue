@@ -11,12 +11,13 @@ import PageHeader from '@/components/shared/PageHeader.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import BadgeStatus from '@/components/shared/BadgeStatus.vue'
 import ConfirmDialog from '@/components/shared/ConfirmDialog.vue'
-import EditDatesDialog from '@/features/reservations/EditDatesDialog.vue'
+import EditReservationDialog from '@/features/reservations/EditReservationDialog.vue'
+import ReassignSpotDialog from '@/features/reservations/ReassignSpotDialog.vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, CalendarDays, Ban, MessageSquarePlus, Send } from 'lucide-vue-next'
+import { ArrowLeft, CalendarDays, Ban, MessageSquarePlus, Send, Check } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 
 const route = useRoute()
@@ -26,8 +27,11 @@ const spotsStore = useSpotsStore()
 const customers = ref<Customer[]>([])
 
 const showCancelDialog = ref(false)
-const showEditDatesDialog = ref(false)
+const showHoldDialog = ref(false)
+const showReassignDialog = ref(false)
+const showEditReservationDialog = ref(false)
 const isCancelling = ref(false)
+const isHolding = ref(false)
 const newNote = ref('')
 const isAddingNote = ref(false)
 
@@ -69,6 +73,19 @@ async function handleCancel() {
   }
 }
 
+async function handleHold() {
+  isHolding.value = true
+  try {
+    await reservationsStore.holdReservation(reservation.value!.id)
+    toast.success('Reservation mise en attente')
+    showHoldDialog.value = false
+  } catch {
+    toast.error('Erreur lors du passage en attente')
+  } finally {
+    isHolding.value = false
+  }
+}
+
 async function handleAddNote() {
   if (!newNote.value.trim()) return
   isAddingNote.value = true
@@ -107,10 +124,27 @@ async function handleAddNote() {
           v-if="reservation.status === 'CONFIRMED' || reservation.status === 'HOLD'"
           variant="outline"
           size="sm"
-          @click="showEditDatesDialog = true"
+          @click="showEditReservationDialog = true"
         >
           <CalendarDays class="mr-2 h-4 w-4" />
-          Modifier dates
+          Modifier reservation
+        </Button>
+        <Button
+          v-if="reservation.status === 'CONFIRMED'"
+          variant="outline"
+          size="sm"
+          @click="showHoldDialog = true"
+        >
+          Mettre en attente
+        </Button>
+        <Button
+          v-if="reservation.status === 'HOLD'"
+          variant="outline"
+          size="sm"
+          @click="showReassignDialog = true"
+        >
+          <Check class="mr-2 h-4 w-4" />
+          Confirmer
         </Button>
         <Button
           v-if="reservation.status === 'CONFIRMED' || reservation.status === 'HOLD'"
@@ -143,7 +177,7 @@ async function handleAddNote() {
             <CardTitle class="text-base">Details</CardTitle>
           </CardHeader>
           <CardContent class="space-y-2 text-sm">
-            <p><span class="text-muted-foreground">Emplacement :</span> {{ spot?.name }}</p>
+            <p><span class="text-muted-foreground">Emplacement :</span> {{ spot ? `#${spot.number}` : reservation.spotId }}</p>
             <p><span class="text-muted-foreground">Arrivee :</span> {{ formatDate(reservation.checkIn) }}</p>
             <p><span class="text-muted-foreground">Depart :</span> {{ formatDate(reservation.checkOut) }}</p>
             <p><span class="text-muted-foreground">Nuits :</span> {{ nights }}</p>
@@ -197,6 +231,16 @@ async function handleAddNote() {
 
     <!-- Dialogs -->
     <ConfirmDialog
+      :open="showHoldDialog"
+      title="Mettre la reservation en attente"
+      description="La reservation sera mise en attente et son emplacement actuel redeviendra disponible."
+      confirm-label="Mettre en attente"
+      :loading="isHolding"
+      @update:open="showHoldDialog = $event"
+      @confirm="handleHold"
+    />
+
+    <ConfirmDialog
       :open="showCancelDialog"
       title="Annuler la reservation"
       description="Etes-vous sur de vouloir annuler cette reservation? Cette action est irreversible."
@@ -207,9 +251,15 @@ async function handleAddNote() {
       @confirm="handleCancel"
     />
 
-    <EditDatesDialog
+    <EditReservationDialog
       v-if="reservation"
-      v-model:open="showEditDatesDialog"
+      v-model:open="showEditReservationDialog"
+      :reservation="reservation"
+    />
+
+    <ReassignSpotDialog
+      v-if="reservation"
+      v-model:open="showReassignDialog"
       :reservation="reservation"
     />
   </div>

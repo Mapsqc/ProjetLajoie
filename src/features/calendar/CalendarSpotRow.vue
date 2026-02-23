@@ -11,7 +11,7 @@ defineProps<{
 function getReservationForDay(date: string, reservations: Reservation[]): Reservation | null {
   return reservations.find(
     (r) =>
-      (r.status === 'CONFIRMED' || r.status === 'HOLD') &&
+      r.status === 'CONFIRMED' &&
       date >= r.checkIn &&
       date < r.checkOut
   ) || null
@@ -20,8 +20,8 @@ function getReservationForDay(date: string, reservations: Reservation[]): Reserv
 
 <template>
   <div class="flex border-b last:border-b-0 hover:bg-muted/20">
-    <div class="w-32 shrink-0 border-r px-3 py-2 text-xs font-medium truncate" :title="spot.name">
-      {{ spot.name }}
+    <div class="w-32 shrink-0 border-r px-3 py-2 text-xs font-medium truncate" :title="`#${spot.number}`">
+      #{{ spot.number }}
     </div>
     <CalendarDayCell
       v-for="day in days"

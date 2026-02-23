@@ -32,6 +32,7 @@ const emit = defineEmits<{
 const reservationsStore = useReservationsStore()
 const spotsStore = useSpotsStore()
 const customers = ref<Customer[]>([])
+const isInitializing = ref(false)
 const isSubmitting = ref(false)
 const errors = ref<Record<string, string>>({})
 
@@ -82,6 +83,7 @@ const totalPrice = computed(() => {
 })
 
 const canSubmit = computed(() => {
+  if (isInitializing.value) return false
   if (isSubmitting.value) return false
   return true
 })
@@ -90,13 +92,7 @@ watch(() => props.open, async (open) => {
   if (!open) return
 
   errors.value = {}
-
-  await Promise.all([
-    spotsStore.fetchSpots(),
-    reservationsStore.fetchReservations(),
-  ])
-  customers.value = await customersService.getAll()
-
+  isInitializing.value = true
   form.value = {
     spotId: props.reservation.spotId,
     customerId: props.reservation.customerId,
@@ -105,6 +101,19 @@ watch(() => props.open, async (open) => {
     adultsCount: props.reservation.adultsCount,
     childrenCount: props.reservation.childrenCount,
     status: props.reservation.status === 'HOLD' ? 'HOLD' : 'CONFIRMED',
+  }
+
+  try {
+    await Promise.all([
+      spotsStore.fetchSpots(),
+      reservationsStore.fetchReservations(),
+    ])
+    customers.value = await customersService.getAll()
+  } catch (err) {
+    console.error('Erreur chargement formulaire reservation:', err)
+    toast.error('Erreur lors du chargement des donnees')
+  } finally {
+    isInitializing.value = false
   }
 })
 
@@ -140,7 +149,10 @@ function validate(): boolean {
 }
 
 async function handleSubmit() {
-  if (!validate()) return
+  if (!validate()) {
+    toast.error('Veuillez corriger les champs en erreur')
+    return
+  }
 
   isSubmitting.value = true
   try {
@@ -156,6 +168,7 @@ async function handleSubmit() {
     toast.success('Reservation modifiee')
     emit('update:open', false)
   } catch (err) {
+    console.error('Erreur modification reservation:', err)
     const message = err instanceof Error ? err.message : 'Erreur lors de la modification'
     toast.error(message)
   } finally {
@@ -252,7 +265,7 @@ async function handleSubmit() {
             Annuler
           </Button>
           <Button type="button" :disabled="!canSubmit" @click="handleSubmit">
-            {{ isSubmitting ? 'En cours...' : 'Enregistrer' }}
+            {{ isInitializing ? 'Chargement...' : isSubmitting ? 'En cours...' : 'Enregistrer' }}
           </Button>
         </DialogFooter>
       </form>

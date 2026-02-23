@@ -111,7 +111,7 @@ function getCustomerName(customerId: string): string {
 
 function getSpotName(spotId: string): string {
   const s = spotsStore.spots.find((s) => s.id === spotId)
-  return s?.name ?? spotId
+  return s ? `#${s.number}` : spotId
 }
 
 function goToDetail(id: string) {

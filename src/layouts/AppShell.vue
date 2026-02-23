@@ -36,7 +36,7 @@ const navItems = [
   { name: 'spots', label: 'Emplacements', icon: MapPin, to: '/spots' },
   { name: 'customers', label: 'Clients', icon: Users, to: '/customers' },
   { name: 'fiscal', label: 'Fiscalité', icon: Receipt, to: '/fiscal' },
-  { name: 'settings', label: 'Paramètres', icon: Settings, to: '/coming-soon', placeholder: true },
+  { name: 'settings', label: 'Paramètres', icon: Settings, to: '/settings' },
 ]
 
 const pageTitle = computed(() => {
@@ -72,9 +72,7 @@ const pageTitle = computed(() => {
           :to="item.to"
           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
           :class="{
-            'bg-sidebar-active text-sidebar-active-foreground font-semibold hover:bg-sidebar-active hover:text-sidebar-active-foreground':
-              route.path.startsWith(item.to) && item.to !== '/coming-soon',
-            'opacity-50': item.placeholder,
+            'bg-sidebar-active text-sidebar-active-foreground font-semibold hover:bg-sidebar-active hover:text-sidebar-active-foreground': route.path.startsWith(item.to),
           }"
         >
           <component :is="item.icon" class="h-5 w-5 shrink-0" />

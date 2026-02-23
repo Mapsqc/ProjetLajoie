@@ -49,6 +49,28 @@ export const useReservationsStore = defineStore('reservations', () => {
     }
   }
 
+  async function holdReservation(id: string) {
+    try {
+      const updated = await reservationsService.hold(id)
+      currentReservation.value = updated
+      await fetchReservations()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Erreur lors du passage en attente'
+      throw e
+    }
+  }
+
+  async function confirmReservation(id: string) {
+    try {
+      const updated = await reservationsService.confirm(id)
+      currentReservation.value = updated
+      await fetchReservations()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Erreur lors de la confirmation'
+      throw e
+    }
+  }
+
   async function updateDates(id: string, checkIn: string, checkOut: string) {
     try {
       const updated = await reservationsService.updateDates(id, checkIn, checkOut)
@@ -88,9 +110,39 @@ export const useReservationsStore = defineStore('reservations', () => {
     }
   }
 
+  async function reassignSpot(id: string, spotId: string) {
+    try {
+      const updated = await reservationsService.reassignSpot(id, spotId)
+      currentReservation.value = updated
+      await fetchReservations()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Erreur lors de la reattribution'
+      throw e
+    }
+  }
+
+  async function updateReservation(id: string, data: {
+    spotId: string
+    customerId: string
+    checkIn: string
+    checkOut: string
+    adultsCount: number
+    childrenCount: number
+    status: 'CONFIRMED' | 'HOLD'
+  }) {
+    try {
+      const updated = await reservationsService.updateReservation(id, data)
+      currentReservation.value = updated
+      await fetchReservations()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Erreur lors de la modification'
+      throw e
+    }
+  }
+
   return {
     reservations, currentReservation, isLoading, error,
     statusFilter, searchQuery,
-    fetchReservations, fetchReservationById, cancelReservation, updateDates, addNote, createReservation,
+    fetchReservations, fetchReservationById, cancelReservation, holdReservation, confirmReservation, updateDates, addNote, createReservation, reassignSpot, updateReservation,
   }
 })

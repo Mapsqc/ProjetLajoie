@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { useCustomersStore } from '@/stores/customers.store'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
@@ -12,13 +13,11 @@ import { Plus, Search } from 'lucide-vue-next'
 const customersStore = useCustomersStore()
 const showCreateDialog = ref(false)
 
+const debouncedFetch = useDebounceFn(() => customersStore.fetchCustomers(), 300)
+
 onMounted(() => {
   customersStore.fetchCustomers()
 })
-
-watch(() => customersStore.searchQuery, () => {
-  customersStore.fetchCustomers()
-}, { debounce: 300 } as any)
 </script>
 
 <template>
@@ -40,7 +39,7 @@ watch(() => customersStore.searchQuery, () => {
           v-model="customersStore.searchQuery"
           placeholder="Rechercher un client..."
           class="pl-9"
-          @input="customersStore.fetchCustomers()"
+          @input="debouncedFetch()"
         />
       </div>
     </div>

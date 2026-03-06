@@ -48,7 +48,7 @@ const pageTitle = computed(() => {
   <div class="flex h-screen overflow-hidden bg-background">
     <!-- Sidebar -->
     <aside
-      class="flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300"
+      class="flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 print:hidden"
       :class="uiStore.sidebarCollapsed ? 'w-16' : 'w-60'"
     >
       <!-- Logo -->
@@ -97,7 +97,7 @@ const pageTitle = computed(() => {
     <!-- Main content -->
     <div class="flex flex-1 flex-col overflow-hidden">
       <!-- Topbar -->
-      <header class="flex h-16 items-center justify-between border-b border-border bg-card px-6">
+      <header class="flex h-16 items-center justify-between border-b border-border bg-card px-6 print:hidden">
         <h1 class="text-lg font-semibold text-foreground">{{ pageTitle }}</h1>
         <div class="flex items-center gap-3">
           <Badge variant="outline" class="hidden sm:inline-flex">Camping Lajoie</Badge>

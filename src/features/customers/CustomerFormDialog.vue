@@ -87,8 +87,9 @@ async function handleSubmit() {
   isSubmitting.value = true
   try {
     if (props.customer) {
-      // Pour l'instant, on ne peut que créer. La modification sera ajoutée plus tard si nécessaire
       toast.error('La modification n\'est pas encore disponible')
+      isSubmitting.value = false
+      return
     } else {
       await customersStore.createCustomer({
         firstName: form.value.firstName.trim(),

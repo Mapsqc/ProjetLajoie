@@ -9,6 +9,7 @@ export async function getDb(): Promise<Database> {
     try {
       await db.select('SELECT name FROM sqlite_master WHERE type="table" LIMIT 1')
     } catch (error) {
+      db = null
       console.error('Erreur lors de la vérification de la base de données:', error)
       throw new Error('La base de données n\'a pas pu être initialisée. Vérifiez que les migrations ont été exécutées.')
     }

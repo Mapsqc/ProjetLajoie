@@ -12,7 +12,7 @@ import { DollarSign, BookOpen, ChevronLeft, ChevronRight, FileDown } from 'lucid
 
 const store = useFiscalStore()
 
-const monthLabel = computed(() => getMonthLabel(store.currentYear, store.currentMonth))
+const monthLabel = computed(() => getMonthLabel(store.currentYear, store.currentMonth - 1))
 
 async function exportPdf() {
   if (store.summary) {

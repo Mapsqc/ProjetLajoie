@@ -24,10 +24,18 @@ export const useSpotsStore = defineStore('spots', () => {
   const selectedVehicleType = ref<VehicleType | ''>('')
   const selectedVehicleLength = ref<number | null>(null)
   const selectedGround = ref<GroundType | ''>('')
+  const includeSpecialSpots = ref(false)
 
-  // --- Base: only REGULAR + active spots for reservation search ---
+  // --- All active spots (ignores admin page search/service filters) ---
+  const allActiveSpots = computed(() => spots.value.filter((s) => s.isActive))
+
+  // --- Base: only REGULAR + active spots (BACKUP/SEASONAL when admin override) ---
   const searchableSpots = computed(() =>
-    spots.value.filter((s) => s.isActive && s.status === 'REGULAR')
+    allActiveSpots.value.filter((s) => {
+      if (s.status === 'REGULAR') return true
+      if (includeSpecialSpots.value && (s.status === 'BACKUP' || s.status === 'SEASONAL')) return true
+      return false
+    })
   )
 
   // --- Cascade level 1: filter by service ---
@@ -113,6 +121,7 @@ export const useSpotsStore = defineStore('spots', () => {
     selectedVehicleType.value = ''
     selectedVehicleLength.value = null
     selectedGround.value = ''
+    includeSpecialSpots.value = false
   }
 
   // --- API actions ---
@@ -177,6 +186,7 @@ export const useSpotsStore = defineStore('spots', () => {
     selectedVehicleType,
     selectedVehicleLength,
     selectedGround,
+    includeSpecialSpots,
 
     // Computed cascades
     searchableSpots,

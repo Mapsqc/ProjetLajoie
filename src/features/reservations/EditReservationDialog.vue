@@ -77,9 +77,14 @@ const nights = computed(() => {
   return n > 0 ? n : 0
 })
 
+const safeAdultsCount = computed(() => {
+  const v = form.value.adultsCount
+  return typeof v === 'number' && !Number.isNaN(v) ? v : 1
+})
+
 const totalPrice = computed(() => {
   if (!selectedSpot.value || nights.value <= 0) return 0
-  return computeTotalWithTax(selectedSpot.value.pricePerNight, nights.value, form.value.adultsCount)
+  return computeTotalWithTax(selectedSpot.value.pricePerNight, nights.value, safeAdultsCount.value)
 })
 
 const canSubmit = computed(() => {
@@ -135,10 +140,10 @@ function validate(): boolean {
   if (!form.value.customerId) {
     errors.value.customerId = 'Le client est requis'
   }
-  if (form.value.adultsCount < 1) {
+  if (!Number.isFinite(form.value.adultsCount) || form.value.adultsCount < 1) {
     errors.value.adultsCount = 'Au moins 1 adulte est requis'
   }
-  if (form.value.childrenCount < 0) {
+  if (!Number.isFinite(form.value.childrenCount) || form.value.childrenCount < 0) {
     errors.value.childrenCount = "Le nombre d'enfants ne peut pas etre negatif"
   }
   if (spotTakenForConfirmed.value) {

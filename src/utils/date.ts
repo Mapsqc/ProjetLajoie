@@ -10,15 +10,18 @@ dayjs.extend(isSameOrAfter)
 dayjs.locale('fr-ca')
 
 export function formatDate(date: string | Date): string {
-  return dayjs(date).format('D MMMM YYYY')
+  const d = dayjs(date)
+  return d.isValid() ? d.format('D MMMM YYYY') : '—'
 }
 
 export function formatDateShort(date: string | Date): string {
-  return dayjs(date).format('D MMM YYYY')
+  const d = dayjs(date)
+  return d.isValid() ? d.format('D MMM YYYY') : '—'
 }
 
 export function formatDateCompact(date: string | Date): string {
-  return dayjs(date).format('DD/MM/YY')
+  const d = dayjs(date)
+  return d.isValid() ? d.format('DD/MM/YY') : '—'
 }
 
 export function getDaysBetween(start: string | Date, end: string | Date): number {
@@ -70,7 +73,7 @@ export function parseFrenchDate(input: string): string | null {
   if (day < 1 || day > 31) return null
 
   const d = dayjs().year(year).month(month).date(day)
-  if (!d.isValid()) return null
+  if (!d.isValid() || d.month() !== month) return null
 
   return d.format('YYYY-MM-DD')
 }

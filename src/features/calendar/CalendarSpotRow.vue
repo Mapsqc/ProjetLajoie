@@ -11,7 +11,9 @@ defineProps<{
 function getReservationForDay(date: string, reservations: Reservation[]): Reservation | null {
   return reservations.find(
     (r) =>
-      r.status === 'CONFIRMED' &&
+      r.status !== 'CANCELLED' &&
+      r.status !== 'EXPIRED' &&
+      r.status !== 'NO_SHOW' &&
       date >= r.checkIn &&
       date < r.checkOut
   ) || null

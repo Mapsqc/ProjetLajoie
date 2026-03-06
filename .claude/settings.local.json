@@ -38,7 +38,25 @@
       "Bash(cargo check:*)",
       "Bash(npm test:*)",
       "Bash(cd /c/ProjetLajoie && npm run test 2>&1)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(unzip:*)",
+      "Bash(echo no pillow:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(cygpath:*)",
+      "Bash(cd /c/CampingLajoieSite && git status -u 2>&1)",
+      "Bash(cd /c/ProjetLajoie && npx vue-tsc --noEmit 2>&1 | head -10 && npx vitest run 2>&1)",
+      "Bash(cd /c/ProjetLajoie && npx vue-tsc --noEmit 2>&1)",
+      "Bash(npm run:*)",
+      "Bash(netstat:*)",
+      "Bash(powershell:*)",
+      "Bash(/c/Windows/System32/cmd.exe:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }

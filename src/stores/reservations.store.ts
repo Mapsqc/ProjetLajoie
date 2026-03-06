@@ -29,6 +29,7 @@ export const useReservationsStore = defineStore('reservations', () => {
   async function fetchReservationById(id: string) {
     isLoading.value = true
     error.value = null
+    currentReservation.value = null
     try {
       currentReservation.value = await reservationsService.getById(id)
     } catch (e) {

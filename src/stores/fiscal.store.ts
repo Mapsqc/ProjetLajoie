@@ -8,7 +8,7 @@ export const useFiscalStore = defineStore('fiscal', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const currentYear = ref(new Date().getFullYear())
-  const currentMonth = ref(new Date().getMonth())
+  const currentMonth = ref(new Date().getMonth() + 1)
 
   async function fetchSummary(year: number, month: number) {
     isLoading.value = true
@@ -23,8 +23,8 @@ export const useFiscalStore = defineStore('fiscal', () => {
   }
 
   function prevMonth() {
-    if (currentMonth.value === 0) {
-      currentMonth.value = 11
+    if (currentMonth.value === 1) {
+      currentMonth.value = 12
       currentYear.value--
     } else {
       currentMonth.value--
@@ -33,8 +33,8 @@ export const useFiscalStore = defineStore('fiscal', () => {
   }
 
   function nextMonth() {
-    if (currentMonth.value === 11) {
-      currentMonth.value = 0
+    if (currentMonth.value === 12) {
+      currentMonth.value = 1
       currentYear.value++
     } else {
       currentMonth.value++
@@ -44,7 +44,7 @@ export const useFiscalStore = defineStore('fiscal', () => {
 
   function goToToday() {
     currentYear.value = new Date().getFullYear()
-    currentMonth.value = new Date().getMonth()
+    currentMonth.value = new Date().getMonth() + 1
     fetchSummary(currentYear.value, currentMonth.value)
   }
 

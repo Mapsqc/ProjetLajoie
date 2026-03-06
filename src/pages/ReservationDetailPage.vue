@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useReservationsStore } from '@/stores/reservations.store'
 import { useSpotsStore } from '@/stores/spots.store'
@@ -13,11 +13,12 @@ import BadgeStatus from '@/components/shared/BadgeStatus.vue'
 import ConfirmDialog from '@/components/shared/ConfirmDialog.vue'
 import EditReservationDialog from '@/features/reservations/EditReservationDialog.vue'
 import ReassignSpotDialog from '@/features/reservations/ReassignSpotDialog.vue'
+import InvoicePrint from '@/features/reservations/InvoicePrint.vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, CalendarDays, Ban, MessageSquarePlus, Send, Check } from 'lucide-vue-next'
+import { ArrowLeft, CalendarDays, Ban, MessageSquarePlus, Send, Check, Printer } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 
 const route = useRoute()
@@ -34,6 +35,15 @@ const isCancelling = ref(false)
 const isHolding = ref(false)
 const newNote = ref('')
 const isAddingNote = ref(false)
+const showInvoice = ref(false)
+
+async function handlePrint() {
+  showInvoice.value = true
+  await nextTick()
+  await nextTick()
+  window.print()
+  showInvoice.value = false
+}
 
 const reservation = computed(() => reservationsStore.currentReservation)
 
@@ -102,7 +112,16 @@ async function handleAddNote() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div>
+    <!-- Contenu imprimable (masqué à l'écran, visible à l'impression) -->
+    <InvoicePrint
+      v-if="showInvoice && reservation && spot"
+      :reservation="reservation"
+      :spot="spot"
+    />
+
+    <!-- Contenu principal (masqué à l'impression) -->
+    <div class="space-y-6 print:hidden">
     <div class="flex items-center gap-4">
       <Button variant="ghost" size="icon" @click="router.push({ name: 'reservations' })">
         <ArrowLeft class="h-4 w-4" />
@@ -120,6 +139,10 @@ async function handleAddNote() {
       <div class="flex items-center gap-2">
         <BadgeStatus :status="reservation.status" />
         <div class="flex-1" />
+        <Button variant="outline" size="sm" @click="handlePrint">
+          <Printer class="mr-2 h-4 w-4" />
+          Imprimer facture
+        </Button>
         <Button
           v-if="reservation.status === 'CONFIRMED' || reservation.status === 'HOLD'"
           variant="outline"
@@ -167,7 +190,10 @@ async function handleAddNote() {
             <p><span class="text-muted-foreground">Nom :</span> {{ customer.firstName }} {{ customer.lastName }}</p>
             <p><span class="text-muted-foreground">Courriel :</span> {{ customer.email }}</p>
             <p><span class="text-muted-foreground">Telephone :</span> {{ customer.phone }}</p>
-            <p v-if="customer.city"><span class="text-muted-foreground">Ville :</span> {{ customer.city }}, {{ customer.province }}</p>
+            <p v-if="customer.city || customer.province"><span class="text-muted-foreground">Ville :</span> {{ customer.city }}{{ customer.city && customer.province ? ', ' : '' }}{{ customer.province }}</p>
+          </CardContent>
+          <CardContent v-else class="text-sm text-muted-foreground">
+            Client introuvable
           </CardContent>
         </Card>
 
@@ -262,5 +288,6 @@ async function handleAddNote() {
       v-model:open="showReassignDialog"
       :reservation="reservation"
     />
+    </div>
   </div>
 </template>

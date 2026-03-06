@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { useSpotsStore } from '@/stores/spots.store'
 import { SERVICE_LABELS } from '@/types'
 import type { SpotService } from '@/types'
@@ -15,13 +16,11 @@ import { Plus, Search } from 'lucide-vue-next'
 const spotsStore = useSpotsStore()
 const showCreateDialog = ref(false)
 
+const debouncedFetch = useDebounceFn(() => spotsStore.fetchSpots(), 300)
+
 onMounted(() => {
   spotsStore.fetchSpots()
 })
-
-watch([() => spotsStore.searchQuery, () => spotsStore.serviceFilter], () => {
-  spotsStore.fetchSpots()
-}, { debounce: 300 } as any)
 
 function handleServiceChange(val: unknown) {
   const strVal = typeof val === 'string' ? val : String(val ?? '')
@@ -52,7 +51,7 @@ const serviceOptions = Object.entries(SERVICE_LABELS) as [SpotService, string][]
           v-model="spotsStore.searchQuery"
           placeholder="Rechercher un emplacement..."
           class="pl-9"
-          @input="spotsStore.fetchSpots()"
+          @input="debouncedFetch()"
         />
       </div>
       <Select :model-value="spotsStore.serviceFilter || 'ALL'" @update:model-value="handleServiceChange">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ReservationFormSchema, SERVICE_LABELS, VEHICLE_TYPE_LABELS, GROUND_LABELS } from '@/types'
+import { ReservationFormSchema, SERVICE_LABELS, VEHICLE_TYPE_LABELS, GROUND_LABELS, STATUS_LABELS } from '@/types'
 import type { SpotService, VehicleType, GroundType } from '@/types'
 import { useSpotsStore } from '@/stores/spots.store'
 import { useReservationsStore } from '@/stores/reservations.store'
@@ -154,6 +154,11 @@ watch(() => spotsStore.selectedGround, () => {
   form.value.spotId = ''
 })
 
+// When admin override changes, reset spot selection (available spots change)
+watch(() => spotsStore.includeSpecialSpots, () => {
+  form.value.spotId = ''
+})
+
 // Reset spot selection when dates change (spot may no longer be available)
 watch([() => form.value.checkIn, () => form.value.checkOut], () => {
   if (form.value.spotId && !availableSpots.value.find((s) => s.id === form.value.spotId)) {
@@ -179,9 +184,7 @@ watch(() => props.open, async (open) => {
     if (spotsStore.spots.length === 0) {
       await spotsStore.fetchSpots()
     }
-    if (reservationsStore.reservations.length === 0) {
-      await reservationsStore.fetchReservations()
-    }
+    await reservationsStore.fetchReservations()
     customers.value = await customersService.getAll()
   }
 })
@@ -353,7 +356,13 @@ async function handleSubmit() {
         <!-- 2. Cascade filters (visible only when dates are valid) -->
         <template v-if="datesValid">
           <div class="space-y-3">
-            <Label class="text-sm font-medium">Filtres emplacement</Label>
+            <div class="flex items-center justify-between">
+              <Label class="text-sm font-medium">Filtres emplacement</Label>
+              <label class="flex items-center gap-2 text-sm text-muted-foreground">
+                <input type="checkbox" v-model="spotsStore.includeSpecialSpots" class="rounded" />
+                Inclure backup / saisonniers
+              </label>
+            </div>
 
             <div class="grid gap-3 sm:grid-cols-2">
               <!-- Service filter -->
@@ -446,6 +455,7 @@ async function handleSubmit() {
               <SelectContent v-if="!noSpotsAvailable">
                 <SelectItem v-for="spot in availableSpots" :key="spot.id" :value="spot.id">
                   #{{ spot.number }} — {{ SERVICE_LABELS[spot.service] }} — {{ formatCurrency(spot.pricePerNight) }}/nuit
+                  <span v-if="spot.status !== 'REGULAR'" class="ml-1 text-xs text-orange-600">({{ STATUS_LABELS[spot.status] }})</span>
                 </SelectItem>
               </SelectContent>
             </Select>

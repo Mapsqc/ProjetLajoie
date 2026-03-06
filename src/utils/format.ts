@@ -1,4 +1,5 @@
 export function formatCurrency(amount: number): string {
+  if (!Number.isFinite(amount)) return '—'
   return new Intl.NumberFormat('fr-CA', {
     style: 'currency',
     currency: 'CAD',

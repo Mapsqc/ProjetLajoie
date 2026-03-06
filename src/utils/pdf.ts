@@ -34,7 +34,7 @@ export async function generateFiscalPdf(summary: FiscalSummary, monthLabel: stri
   doc.setTextColor(130)
   doc.text('Genere le ' + new Date().toLocaleDateString('fr-CA'), 105, 110, { align: 'center' })
 
-  const fileName = `fiscal-${summary.year}-${String(summary.month + 1).padStart(2, '0')}.pdf`
+  const fileName = `fiscal-${summary.year}-${String(summary.month).padStart(2, '0')}.pdf`
 
   // Get PDF as Uint8Array, write to temp via Rust, then open with system viewer
   const arrayBuffer = doc.output('arraybuffer')

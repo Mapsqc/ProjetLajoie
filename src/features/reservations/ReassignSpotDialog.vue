@@ -131,7 +131,7 @@ async function handleSubmit() {
         </div>
 
         <div v-if="selectedSpot" class="rounded-md border bg-muted/40 p-3 text-sm">
-          <p><span class="text-muted-foreground">Emplacement actuel :</span> {{ props.reservation.spotId }}</p>
+          <p><span class="text-muted-foreground">Emplacement actuel :</span> #{{ spotsStore.spots.find(s => s.id === props.reservation.spotId)?.number ?? props.reservation.spotId }}</p>
           <p><span class="text-muted-foreground">Nouvel emplacement :</span> #{{ selectedSpot.number }}</p>
           <p><span class="text-muted-foreground">Nouveau total :</span> {{ formatCurrency(recalculatedTotal) }}</p>
         </div>
